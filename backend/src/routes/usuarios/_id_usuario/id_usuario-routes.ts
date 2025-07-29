@@ -1,4 +1,7 @@
-import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
+import { FastifyPluginAsyncTypebox, Type } from '@fastify/type-provider-typebox';
+import { Usuario } from '../../../schemas/usuario.js';
+import { usuarioRepository } from '../../../services/usuario.repository.js';
+import { query } from 'bcryptjs';
 
 const usuariosRoutes: FastifyPluginAsyncTypebox = async (fastify, opts): Promise<void> => {
 
@@ -7,14 +10,23 @@ const usuariosRoutes: FastifyPluginAsyncTypebox = async (fastify, opts): Promise
       tags: ["usuarios"],
       summary: "Obtener usuario",
       description : "Obtener el usuario a partir de su id",
-      security: [
-        { bearerAuth: [] }
-      ]
+      params: usuarioRepository,
+      response: {
+        200: Usuario, 
+        404: Type.Object({message: Type.String()}),
+      }
     },
+    onRequest: fastify.verifySelfOrAdmin,
     handler: async function (request, reply) {
-      throw new Error("No implementado");
+      const { id_usuario } = request.params as { id_usuario: number };
+      const res = await query ( `SELECT U.* FROM public.usuarios U`, [id]);
+
+    if (res.rowCount === 0) {
+      return reply.status(404).send({ message: `Usuario con id no encontrado.` });
     }
-  })
+    const usuario = res.rows[0];
+    return usuario;
+  });
 
   fastify.get('/departamentos', {
     schema: {
